@@ -4,7 +4,16 @@
 
 # Apple WLOC 定位修改
 
-## 项目速览
+[![iOS](https://img.shields.io/badge/platform-iOS-000000?logo=apple&logoColor=white)](#-支持客户端)
+[![Proxy scripts](https://img.shields.io/badge/proxy-Surge%20%7C%20QX%20%7C%20Loon%20%7C%20Stash%20%7C%20Shadowrocket-0A84FF)](modules)
+[![Cloudflare Workers](https://img.shields.io/badge/Cloudflare-Workers%20%7C%20Pages-F38020?logo=cloudflare&logoColor=white)](worker)
+[![JavaScript](https://img.shields.io/badge/JavaScript-ES%20Modules-F7DF1E?logo=javascript&logoColor=000)](dist)
+
+修改 Apple `gs-loc` 网络定位服务（Wi-Fi / 基站）返回的坐标，实现 iOS 网络定位位置替换。可以通过快捷指令直接从地图分享位置，也可以使用 Worker / Pages 选点页面保存坐标。
+
+> ⚠️ 本项目依赖代理软件的 HTTPS 解密与响应重写，只影响 Apple 网络定位，不等同于修改 GPS 硬件定位。启用前请备份代理配置；结束使用后及时恢复真实定位。请仅在合法、明确授权且不会误导他人的场景使用。
+
+## 🔎 项目速览
 
 | 项目 | 说明 |
 | --- | --- |
@@ -15,13 +24,19 @@
 | 支持客户端 | Surge、Quantumult X、Loon、Stash、Shadowrocket，Egern 可使用 Surge 模块 |
 | 配套能力 | iOS 快捷指令、地图链接解析和可自行部署的 Cloudflare Worker |
 
-> 该工具依赖代理软件对网络请求进行重写。启用前请先备份原配置；定位异常时应立即停用模块并恢复真实位置。地图链接解析服务可以自行部署，避免依赖公共服务。
+### 📱 支持客户端
 
-修改 Apple 网络定位服务 (WiFi/基站) 返回的坐标，实现 iOS 网络定位虚拟定位。打开在线选点页面选位置即可生效，无需手动填经纬度。
+| 客户端 | 配置文件 |
+| --- | --- |
+| Surge / Egern | `modules/wloc.sgmodule` |
+| Quantumult X | `modules/wloc.conf` |
+| Loon | `modules/wloc.lpx` |
+| Stash | `modules/wloc.stoverride` |
+| Shadowrocket | `modules/wloc.module` |
 
 ---
 
-## 订阅地址
+## 📦 安装与订阅
 
 **Surge:**
 https://raw.githubusercontent.com/Yu9191/wloc/refs/heads/main/modules/wloc.sgmodule
@@ -43,7 +58,7 @@ https://raw.githubusercontent.com/Yu9191/wloc/refs/heads/main/modules/wloc.modul
 
 ---
 
-## 快捷指令（推荐，最方便）
+## 🚀 快捷指令（推荐）
 
 直接用快捷指令切换 / 清除定位，无需打开选点页面：
 
@@ -63,7 +78,7 @@ https://raw.githubusercontent.com/Yu9191/wloc/refs/heads/main/modules/wloc.modul
 
 ---
 
-### 关于地图链接解析（worker）
+### 🗺️ 关于地图链接解析（Worker）
 
 为了让苹果地图和高德走同一条流程，链接统一发给 `wloc-spoofer.wloc.workers.dev/api/parse` 解析：
 
@@ -74,7 +89,8 @@ https://raw.githubusercontent.com/Yu9191/wloc/refs/heads/main/modules/wloc.modul
 
 **不放心可自行部署：** worker 源码完全开源，可自己部署一份替换上面的地址：
 
-- 解析逻辑：[`worker/src/parse.js`](worker/src/parse.js)，路由：[`worker/src/index.js`](worker/src/index.js)
+- Worker 入口与页面/解析逻辑：[`worker/wloc-worker.js`](worker/wloc-worker.js)
+- Pages Functions 兼容路由：[`worker/functions/[[route]].js`](worker/functions/[[route]].js)
 - 部署后把快捷指令里的 `wloc-spoofer.wloc.workers.dev` 换成你自己的 worker 域名即可。
 
 ---
@@ -251,7 +267,70 @@ Pages 和 Workers 功能完全一致，按需选择即可。
 
 ---
 
-## 致谢
+## 🗂️ 目录结构
+
+```text
+.
+├─ dist/
+│  ├─ wloc.js              # 解析并替换 Apple WLOC protobuf 响应
+│  └─ wloc-settings.js     # 接收选点请求并写入代理持久化存储
+├─ modules/                # 各代理客户端的订阅配置
+├─ worker/
+│  ├─ wloc-worker.js       # Cloudflare Worker 页面与 API
+│  ├─ functions/           # Pages Functions 路由适配
+│  ├─ dist/                # Pages 静态路由配置
+│  ├─ wrangler.jsonc       # Workers 部署配置
+│  └─ wrangler.pages.jsonc # Pages 部署配置
+├─ docs/shortcut-guide.md  # 选点与快捷指令补充说明
+└─ wloc.jpg                # 项目图标
+```
+
+## ⚙️ 配置说明
+
+| 参数 | 说明 | 默认值 |
+| --- | --- | --- |
+| `longitude` | 目标经度；设备保存值优先 | `113.94114` |
+| `latitude` | 目标纬度；设备保存值优先 | `22.544577` |
+| `accuracy` | 返回精度，单位为米 | `25` |
+| `logLevel` | `off/error/warn/info/debug/all` | `info` |
+
+实际优先级为：在线选点/快捷指令写入的 `wloc_settings` > 模块参数 > 默认值。默认坐标与空持久化数据组合用于判断未自定义状态；如果手动改过模块经纬度，清空持久化数据后仍可能继续改写位置。
+
+## 🔐 隐私与安全
+
+- 生效坐标保存在代理工具的 `$persistentStore` / `$prefs` 中；收藏列表保存在选点页面浏览器的 `localStorage` 中。
+- 公共 `/api/parse` 会收到你提交的地图链接并可能跟随短链跳转。代码设计为不写数据库、不缓存，但无法替你审计公共实例的实际部署；敏感位置建议自部署。
+- 模块需要 MITM `gs-loc.apple.com` 与 `gs-loc-cn.apple.com`。这会扩大代理软件可见的流量范围，应只使用可信代理客户端与自有证书。
+- 不要把个人坐标、代理配置、访问日志或浏览器数据提交到仓库。
+- Apple、高德等地图链接及坐标系规则可能变化，重要场景请先核对转换结果。
+
+## 🧪 开发与验证
+
+Worker 使用 ES Modules 和 Hono。进入 `worker` 后安装依赖并启动本地开发服务：
+
+```bash
+cd worker
+npm install
+npm run dev
+```
+
+Pages 本地模式：
+
+```bash
+npm run pages:dev
+```
+
+仓库当前没有自动化测试脚本。修改后至少手动检查：
+
+1. 对应客户端能加载模块且 MITM 主机名正确。
+2. 保存与清理接口能正确更新持久化状态。
+3. 无自定义坐标时响应保持透传。
+4. Apple Maps、高德短链、文本夹链接及境外坐标解析符合预期。
+5. Worker 与 Pages 两种部署路径都能打开页面并返回 API 结果。
+
+开发时不要用真实常用位置作为固定测试数据；部署前先检查 `wrangler.jsonc` / `wrangler.pages.jsonc` 的项目名和路由。
+
+## 🙏 致谢
 
 - [proxypin-wloc-spoofer](https://github.com/FFF686868/proxypin-wloc-spoofer) - 原始 WLOC 定位修改思路 by FFF686868
 - [NSNanoCat/Util](https://github.com/NSNanoCat/util) - 跨平台脚本工具框架
