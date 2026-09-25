@@ -1,0 +1,6 @@
+{
+  "name": "wloc-spoofer",
+  "main": "legacy-proxy.mjs",
+  "account_id": "62f6a5809a3fcb9af0918ba64d1dbbb8",
+  "compatibility_date": "2025-04-01"
+}

@@ -1,6 +1,7 @@
 {
   "name": "wloc-spoofer",
   "main": "src/index.js",
+  "account_id": "59b8c62e6c28c08dbd13cb96e10210e4",
   "compatibility_date": "2024-01-01",
   "compatibility_flags": ["nodejs_compat"]
 }
